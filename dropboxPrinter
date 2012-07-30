@@ -1,0 +1,117 @@
+#!/bin/bash
+# Dropbox Printer
+# Copyright 2012 - Marcelo Carlos (contact@marcelocarlos.com)
+# Distributed under the terms of the GNU General Public License, v2 or later
+
+VERSION="1.0.0"
+
+# GLOBAL VARIABLES
+APP_NAME=$(basename $0)
+APP_PATH=$(dirname "$0")
+VERBOSE=false
+STAPLE=""
+DUPLEX="-o KMDuplex=1Sided"
+COLOUR="-o SelectColor=GrayScale"
+USERNAME=""
+
+function usage() {
+	cat << EOF
+Usage: $APP_NAME [options] basepath
+
+$APP_NAME monitors the folder defined in 'basepath' parameter and prints any pdf file added to this path
+IMPORTANT: the subfolders' name under 'basepath' will be used as printers' names when the jobs are sent to the printing server
+
+Options:
+    -u <user>  Print using the specified username
+    -1         One sided printing (default: 2 sided)
+    -c         Print in color (default: grayscale)
+    -s         Staple
+    -h	       Show help
+    -v         Verbose mode	
+
+Example:
+    $APP_NAME /Users/yourusername/Dropbox/PrinterQueue
+	
+EOF
+}
+
+function checkDeps() {
+	local OK=1
+	local NOTFOUND=""
+	echo -ne "checking dependencies ... "
+	for tool in {"ls","lp"}; do
+		RESULT="`which "$tool" &> /dev/null`"
+		if [ $? -ne "0" ]; then 
+			NOTFOUND=$NOTFOUND"$tool "
+			OK=0; 
+		fi
+	done
+
+	if [ "$OK" -eq 0 ]; then 
+		echo "[FAIL]"
+		echo "The following dependencies were not found: $NOTFOUND"
+		echo "Exiting ..." 
+		exit 10
+	else
+		echo "[OK]"	
+	fi
+}
+
+function run() {
+	for Printer in $(/bin/ls -1 "$1"); do
+	    if $VERBOSE ; then
+		    echo "Checking printing queue for $Printer ..."
+		fi
+		for PrintFile in $(/bin/ls -1 "$1/$Printer"); do
+			if $VERBOSE ; then
+				echo "	lp $USERNAME -d $Printer $DUPLEX $COLOUR $STAPLE -o PageSize=A4 -o scaling=100 ${1}/${Printer}/${PrintFile}" 
+			fi
+			echo "  Printing file ${PrintFile} using printer ${Printer}" 
+			lp $USERNAME -d $Printer $DUPLEX $COLOUR $STAPLE -o PageSize=A4 -o scaling=100 ${1}/${Printer}/${PrintFile}
+			rm -f ${1}/${Printer}/${PrintFile}
+		done
+		if $VERBOSE ; then
+		    echo "	done."
+		fi
+	done
+}
+
+checkDeps
+
+# a colon means that a parameter is expected after the option selected
+while getopts "hvcs1u:" OPTION
+do
+	case $OPTION in
+	    v)
+	    	VERBOSE=true
+	    	;;
+	    c)
+	    	COLOUR="-o SelectColor=Color"
+	    	;;
+	    s)
+	    	STAPLE="-o Staple=\"1Staple(Left)\""
+	    	;;
+	    u)
+	    	USERNAME="-U $OPTARG"
+	    	;;
+	    1)
+	    	DUPLEX="-o KMDuplex=1Sided"
+	    	;;
+		?)
+			usage
+			exit
+			;;
+	esac
+done
+# shift all processed options away, so it brings the positional parameters to the correct position
+shift $((OPTIND-1))
+
+if [ $# -ne "1" ]; then
+	usage
+	exit 11;
+else
+	while [ 1 ]; do
+		run $1
+		sleep 3
+	done
+fi
