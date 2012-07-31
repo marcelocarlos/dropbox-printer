@@ -10,7 +10,7 @@ APP_NAME=$(basename $0)
 APP_PATH=$(dirname "$0")
 VERBOSE=false
 STAPLE=""
-DUPLEX="-o KMDuplex=1Sided"
+DUPLEX="-o KMDuplex=2Sided"
 COLOUR="-o SelectColor=GrayScale"
 USERNAME=""
 
