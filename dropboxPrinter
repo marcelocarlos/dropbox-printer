@@ -13,6 +13,8 @@ STAPLE=""
 DUPLEX="-o KMDuplex=2Sided"
 COLOUR="-o SelectColor=GrayScale"
 USERNAME=""
+PAGESPERSHEET=""
+LANDSCAPE=""
 
 function usage() {
 	cat << EOF
@@ -24,8 +26,10 @@ IMPORTANT: the subfolders' name under 'basepath' will be used as printers' names
 Options:
     -u <user>  Print using the specified username
     -1         One sided printing (default: 2 sided)
+    -2         Print 2 pages per sheet
+    -l	       Print in landscape mode
     -c         Print in color (default: grayscale)
-    -s         Staple
+    -s         Staple    
     -h	       Show help
     -v         Verbose mode	
 
@@ -63,11 +67,12 @@ function run() {
 		    echo "Checking printing queue for $Printer ..."
 		fi
 		for PrintFile in $(/bin/ls -1 "$1/$Printer"); do
+            echo "  Printing file ${PrintFile} using printer ${Printer}"
+            LPCOMMAND="lp $USERNAME -d $Printer $DUPLEX $PAGESPERSHEET $LANDSCAPE $COLOUR $STAPLE -o PageSize=A4 -o scaling=100 ${1}/${Printer}/${PrintFile}"
 			if $VERBOSE ; then
-				echo "	lp $USERNAME -d $Printer $DUPLEX $COLOUR $STAPLE -o PageSize=A4 -o scaling=100 ${1}/${Printer}/${PrintFile}" 
-			fi
-			echo "  Printing file ${PrintFile} using printer ${Printer}" 
-			lp $USERNAME -d $Printer $DUPLEX $COLOUR $STAPLE -o PageSize=A4 -o scaling=100 ${1}/${Printer}/${PrintFile}
+				echo $LPCOMMAND
+			fi		
+            $LPCOMMAND	
 			rm -f ${1}/${Printer}/${PrintFile}
 		done
 		if $VERBOSE ; then
@@ -79,7 +84,7 @@ function run() {
 checkDeps
 
 # a colon means that a parameter is expected after the option selected
-while getopts "hvcs1u:" OPTION
+while getopts "hvcs12lu:" OPTION
 do
 	case $OPTION in
 	    v)
@@ -97,6 +102,12 @@ do
 	    1)
 	    	DUPLEX="-o KMDuplex=1Sided"
 	    	;;
+        2)
+            PAGESPERSHEET="-o number-up=2"
+            ;;
+        l)
+            LANDSCAPE="-o landscape"
+            ;;
 		?)
 			usage
 			exit
